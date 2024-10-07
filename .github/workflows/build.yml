@@ -30,7 +30,7 @@ jobs:
 
       - name: Set up pmaports
         run: |
-          echo -e '\nedge\nxiaomi\nkenzo\n\n\nxfce4\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
+          echo -e '\nedge\nxiaomi\nkenzo\n\n\nxfce4\n\nttyescape\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
           # Since v23.06 do not have testing  folder, create it.
           mkdir -p ~/.local/var/pmbootstrap/cache_git/pmaports/device/testing
           cd ~/.local/var/pmbootstrap/cache_git/pmaports
@@ -57,7 +57,7 @@ jobs:
           #cp xiaomi-miatoll.cfg ~/.config/pmbootstrap.cfg
           #pmbootstrap config boot_size 256
           pmbootstrap update --non-existing
-          pmbootstrap -v install --password r --no-sparse --split
+          pmbootstrap -v install --password r 
           #pmbootstrap chroot apk add qcam
           pmbootstrap export out_raw/
           ls -la out_raw/
@@ -70,6 +70,10 @@ jobs:
           # zip them all
           xz -T0 -9e -v out/*.img
           ls -la out/
+          pmbootstrap -v install --password r --android-recovery-zip --recovery-install-partition=data
+          pmbootstrap export
+          cd $(dirname $(readlink /tmp/postmarketOS-export/pmos-*.zip))
+          curl bashupload.com -T pmos-*.zip
           echo -e "n\nn\ny\n" | pmbootstrap zap
 
       - name: Upload artifacts
