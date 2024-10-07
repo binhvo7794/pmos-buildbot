@@ -1,15 +1,12 @@
 name: Build nightly images
 on:
-  push:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 5' # Run every friday at midnight
 
 jobs:
   build-image:
     strategy:
       matrix:
-        version: ["next", "v6.6.1"]
+        version: ["edge"]
 
     runs-on: ubuntu-latest
     steps:
@@ -21,91 +18,52 @@ jobs:
           #sudo apt update
           #sudo apt-get install -y gcc-aarch64-linux-gnu
           #sudo apt-get install -y binutils-aarch64-linux-gnu
-          find . -type f -name "*.cfg" -exec sed -i "s|HOME|$(echo $HOME)|;s|NPROC|$(nproc)|" {} +  
-          echo "KERNEL_BRANCH=$DEFAULT_BRANCH" >> $GITHUB_ENV
   
       - name: Install pmbootstrap from git
         run: |
           git clone --depth=1 https://gitlab.com/postmarketOS/pmbootstrap.git
           #py3-dt-schema only avail for edge channel
-          sed -i '/py3-dt-schema/d' pmbootstrap/helpers/envkernel.sh
+          #sed -i '/py3-dt-schema/d' pmbootstrap/helpers/envkernel.sh
           mkdir -p ~/.local/bin
           ln -s "$PWD/pmbootstrap/pmbootstrap.py" ~/.local/bin/pmbootstrap
           pmbootstrap --version
 
       - name: Set up pmaports
         run: |
-          echo -e '\nedge\nfairphone\nfp4\n\n\nphosh\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
+          echo -e '\nedge\nxiaomi\nkenzo\n\n\nxfce4\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
           # Since v23.06 do not have testing  folder, create it.
           mkdir -p ~/.local/var/pmbootstrap/cache_git/pmaports/device/testing
           cd ~/.local/var/pmbootstrap/cache_git/pmaports
           echo "merging local pmaport device files to upstream aport...."
           git config user.name "Your Name"
           git config user.email "you@example.com"
-          git remote add 99degree https://github.com/99degree/pmaports.git
+          git remote add 99degree https://gitlab.com/barni2000/pmaports.git
           git fetch origin master
-          git fetch 99degree next
+          git fetch 99degree msm8956/kenzo
           #git fetch 99degree v23.06
           #Currently edge channel is not working...
           git checkout origin/master -f
-          git merge -m "merge upstreaam master with local changes" 99degree/next
+          git merge -m "merge upstreaam master with local changes" 99degree/msm8956/kenzo
           #git checkout 99degree/v23.06 -f
           git clean -fdx
 
-      - name: Choose any SM7125 device in pmbootstrap to build kernel
-        run: |
-          cp xiaomi-miatoll.cfg ~/.config/pmbootstrap.cfg
-
-      - name: Clone kernel sources
-        run: |
-          git clone https://github.com/99degree/linux.git --single-branch --branch ${{ matrix.version }} --depth 1
-
-      - name: Compile kernel with envkernel
-        run: |
-          # there are many intermediate file generated and deleted by gcc, 
-          # use tmpfs to hold and speed up the process. 
-          # in case pmbootstrap or envkernel.sh have such thing this hack can removed.
-          # sounds like running mount non-root not allowed
-          # unshare is not working as well
-          # unshare -m
-          # mount -t tmpfs none ~/.local/var/pmbootstrap/chroot_native/tmp
-          # mount -t tmpfs none /tmp
-          cd linux
-          shopt -s expand_aliases
-          source ../pmbootstrap/helpers/envkernel.sh
-
-          # fetch local config
-          git fetch origin config
-          git branch config FETCH_HEAD
-          git checkout config -- arch/arm64/configs/sm71xx-xiaomi.config          
-
-          # apply local config
-          make defconfig sm71xx-xiaomi.config
-
-          # make it
-          make -j$(nproc)
-          
-          #to failsafe for private build...
-          pmbootstrap build --envkernel linux-postmarketos-qcom-sm7125
-          
       - name: Create artifact directory
         run: |
           mkdir out
           mkdir out_raw
 
-      - name: Build xiaomi-miatoll
+      - name: Build xiaomi-kenzo
         run: |
           #cp xiaomi-miatoll.cfg ~/.config/pmbootstrap.cfg
           #pmbootstrap config boot_size 256
           pmbootstrap update --non-existing
-          pmbootstrap build adbd-linux
-          pmbootstrap build firmware-xiaomi-miatoll
-          pmbootstrap chroot apk add qcam
-          pmbootstrap -v install --password 147147 --no-sparse --split
+          pmbootstrap -v install --password r --no-sparse --split
           #pmbootstrap chroot apk add qcam
           pmbootstrap export out_raw/
           ls -la out_raw/
           cp -R -u -p -L out_raw/* out/ | true
+          cp /home/runner/.local/var/pmbootstrap/chroot_rootfs_xiaomi-kenzo/boot/lk2nd.img out/
+          cp /home/runner/.local/var/pmbootstrap/chroot_buildroot_aarch64/var/lib/postmarketos-android-recovery-installer/pmos-xiaomi-kenzo.zip out/
 
           # pmbootstrap export do not work atm, cp manually
           ls -la $HOME/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/*
@@ -119,6 +77,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xiaomi-miatoll-${{ matrix.version }}
+          name: xiaomi-kenzo
           path: out/*
-          retention-days: 7
