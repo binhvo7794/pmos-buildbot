@@ -62,8 +62,6 @@ jobs:
           pmbootstrap export out_raw/
           ls -la out_raw/
           cp -R -u -p -L out_raw/* out/ | true
-          cp /home/runner/.local/var/pmbootstrap/chroot_rootfs_xiaomi-kenzo/boot/lk2nd.img out/
-          cp /home/runner/.local/var/pmbootstrap/chroot_buildroot_aarch64/var/lib/postmarketos-android-recovery-installer/pmos-xiaomi-kenzo.zip out/
 
           # pmbootstrap export do not work atm, cp manually
           ls -la $HOME/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/*
@@ -78,4 +76,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xiaomi-kenzo
-          path: out/*
+          path: |
+            out/*
+            out_raw/*
