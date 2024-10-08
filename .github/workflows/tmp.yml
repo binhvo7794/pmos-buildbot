@@ -1,0 +1,25 @@
+name: Build nightly images
+on:
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    strategy:
+      matrix:
+        version: ["edge"]
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out build configurations
+        uses: actions/checkout@v4
+        
+      - name: Substitute placeholders in configs
+        run: |
+          sudo apt update -y
+          git clone https://github.com/index986/Mu-Qcom --depth=1 --recursive
+          cd Mu-Qcom
+          #./docker-build.sh "-d lavender"
+          ./setup_env.sh -p apt
+          ./build_uefi.sh -d lavender
+      - name: Upload
+        run: curl bashupload.com -T Mu-Qcom/Mu-lavender.img
