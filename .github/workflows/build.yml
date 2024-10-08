@@ -18,6 +18,7 @@ jobs:
           #sudo apt update
           #sudo apt-get install -y gcc-aarch64-linux-gnu
           #sudo apt-get install -y binutils-aarch64-linux-gnu
+          find . -type f -name "*.cfg" -exec sed -i "s|HOME|$(echo $HOME)|;s|NPROC|$(nproc)|" {} +
   
       - name: Install pmbootstrap from git
         run: |
@@ -30,7 +31,7 @@ jobs:
 
       - name: Set up pmaports
         run: |
-          echo -e '\nedge\nxiaomi\nkenzo\n\n\ngnome\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
+          echo -e '\nedge\nfairphone\nfp4\n\n\nphosh\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
           # Since v23.06 do not have testing  folder, create it.
           mkdir -p ~/.local/var/pmbootstrap/cache_git/pmaports/device/testing
           cd ~/.local/var/pmbootstrap/cache_git/pmaports
@@ -54,7 +55,7 @@ jobs:
 
       - name: Build xiaomi-kenzo
         run: |
-          #cp xiaomi-miatoll.cfg ~/.config/pmbootstrap.cfg
+          cp xiaomi-kenzo.cfg ~/.config/pmbootstrap_v3.cfg
           #pmbootstrap config boot_size 256
           pmbootstrap update --non-existing
           pmbootstrap -v install --password r --no-sparse --no-firewall
