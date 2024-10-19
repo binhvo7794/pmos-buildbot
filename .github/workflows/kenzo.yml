@@ -1,0 +1,83 @@
+name: Build nightly images
+on:
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    strategy:
+      matrix:
+        version: ["edge"]
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out build configurations
+        uses: actions/checkout@v4
+        
+      - name: Substitute placeholders in configs
+        run: |
+          #sudo apt update
+          #sudo apt-get install -y gcc-aarch64-linux-gnu
+          #sudo apt-get install -y binutils-aarch64-linux-gnu
+  
+      - name: Install pmbootstrap from git
+        run: |
+          git clone --depth=1 https://gitlab.com/postmarketOS/pmbootstrap.git
+          #py3-dt-schema only avail for edge channel
+          #sed -i '/py3-dt-schema/d' pmbootstrap/helpers/envkernel.sh
+          mkdir -p ~/.local/bin
+          ln -s "$PWD/pmbootstrap/pmbootstrap.py" ~/.local/bin/pmbootstrap
+          pmbootstrap --version
+
+      - name: Set up pmaports
+        run: |
+          echo -e '\nedge\nxiaomi\nkenzo\n\n\nfbkeyboard\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | pmbootstrap init || true
+          # Since v23.06 do not have testing  folder, create it.
+          mkdir -p ~/.local/var/pmbootstrap/cache_git/pmaports/device/testing
+          cd ~/.local/var/pmbootstrap/cache_git/pmaports
+          echo "merging local pmaport device files to upstream aport...."
+          git config user.name "Your Name"
+          git config user.email "you@example.com"
+          git remote add 99degree https://github.com/binhvo7794/pmaports.git
+          git fetch origin master
+          git fetch 99degree master
+          #git fetch 99degree v23.06
+          #Currently edge channel is not working...
+          git checkout origin/master -f
+          git checkout 99degree/master -f
+          git clean -fdx
+
+      - name: Create artifact directory
+        run: |
+          mkdir out
+          mkdir out_raw
+
+      - name: Build xiaomi-kenzo
+        run: |
+          cp xiaomi-kenzo.cfg ~/.config/pmbootstrap_v3.cfg
+          pmbootstrap update --non-existing
+          pmbootstrap checksum linux-xiaomi-kenzo
+          pmbootstrap build device-xiaomi-kenzo --force
+          #pmbootstrap build linux-xiaomi-kenzo --force
+          pmbootstrap -v install --password r --no-sparse --no-firewall
+          pmbootstrap export out_raw/
+          cp -R -u -p -L out_raw/* out/ | true
+
+          # pmbootstrap export do not work atm, cp manually
+          ls -la $HOME/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/*
+          cp $HOME/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/* out/
+
+          # zip them all
+          xz -T0 -9e -v out/*.img
+          ls -la out/
+          echo -e "n\nn\ny\n" | pmbootstrap zap
+
+      - name: Log
+        if: always()
+        run: cat /home/runner/.local/var/pmbootstrap/log.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaomi-kenzo
+          path: |
+            out/*
